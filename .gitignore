@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Excel 임시 파일
+~$*.xlsx
+
+# OS
+.DS_Store
+Thumbs.db

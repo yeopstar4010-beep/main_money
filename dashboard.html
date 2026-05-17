@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>민엽 & 현지 · 자산관리</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <style>
+    :root {
+      --navy:    #1F3864;
+      --blue:    #2E75B6;
+      --blue2:   #5BA3D9;
+      --lblue:   #BDD7EE;
+      --bg:      #F4F7FB;
+      --card:    #FFFFFF;
+      --border:  #E6EDF7;
+      --text:    #1A2332;
+      --muted:   #6B7A8D;
+      --green:   #10B981;
+      --red:     #EF4444;
+      --r:       20px;
+      --r-sm:    12px;
+      --shadow:  0 1px 3px rgba(31,56,100,.05), 0 4px 20px rgba(31,56,100,.07);
+      --shadow-h:0 8px 40px rgba(31,56,100,.14);
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    /* ── layout ── */
+    .wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 40px 48px 64px;
+    }
+    /* ── header ── */
+    .hd {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding-bottom: 28px;
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hd-title   { font-size: 28px; font-weight: 800; color: var(--navy); letter-spacing: -.5px; }
+    .hd-sub     { font-size: 13px; color: var(--muted); margin-top: 5px; font-weight: 400; }
+    .hd-date    { font-size: 13px; color: var(--muted); text-align: right; line-height: 1.8; }
+    .hd-date b  { color: var(--navy); font-weight: 600; }
+    /* ── card ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 24px 28px;
+      transition: box-shadow .2s;
+    }
+    .card:hover { box-shadow: var(--shadow-h); }
+    .card-sm { padding: 18px 22px; border-radius: 16px; }
+    /* ── gradient card ── */
+    .card-navy {
+      background: linear-gradient(135deg, #1B3260 0%, #2E75B6 100%);
+      color: white;
+      border-color: transparent;
+    }
+    /* ── metric ── */
+    .lbl {
+      font-size: 11px; font-weight: 600; letter-spacing: .8px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    }
+    .card-navy .lbl { color: rgba(255,255,255,.65); }
+    .val {
+      font-size: 28px; font-weight: 800; color: var(--navy);
+      line-height: 1; letter-spacing: -.5px;
+    }
+    .card-navy .val { color: #fff; }
+    .sub {
+      font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6;
+    }
+    .card-navy .sub { color: rgba(255,255,255,.65); }
+    .split {
+      display: flex; gap: 20px; margin-top: 14px;
+      padding-top: 14px; border-top: 1px solid rgba(255,255,255,.15);
+    }
+    .split-item .split-lbl { font-size: 10px; color: rgba(255,255,255,.6); margin-bottom: 2px; }
+    .split-item .split-val { font-size: 15px; font-weight: 700; color: #fff; }
+    .vr { width: 1px; background: rgba(255,255,255,.2); }
+    /* ── row & col ── */
+    .row { display: flex; gap: 16px; margin-bottom: 16px; }
+    .row > .card { flex: 1; }
+    /* ── D-Day ── */
+    .dday { text-align: center; padding: 20px 16px; }
+    .dday-ev { font-size: 12px; font-weight: 600; color: var(--blue); margin-bottom: 10px; letter-spacing: .3px; }
+    .dday-num { font-size: 38px; font-weight: 900; color: var(--navy); letter-spacing: -2px; line-height: 1; }
+    .dday-pref { font-size: 15px; font-weight: 700; color: var(--blue2); }
+    .dday-dt { font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .prog-bg { height: 4px; background: var(--border); border-radius: 99px; margin-top: 14px; }
+    .prog-fill { height: 4px; border-radius: 99px; background: linear-gradient(90deg, var(--blue), var(--blue2)); }
+    /* ── section title ── */
+    .sect {
+      font-size: 15px; font-weight: 700; color: var(--navy);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .sect::before {
+      content: ""; display: block; width: 3px; height: 15px;
+      border-radius: 99px;
+      background: linear-gradient(180deg, var(--blue), var(--navy));
+    }
+    /* ── chart card ── */
+    .chart-card { padding: 28px 28px 16px; }
+    /* ── fund list ── */
+    .fund-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 0; border-bottom: 1px solid #F0F5FD;
+    }
+    .fund-item:last-child { border-bottom: none; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot-out { background: var(--red); }
+    .dot-in  { background: var(--blue); }
+    .fund-name { flex: 1; font-size: 13px; color: var(--text); }
+    .fund-amt  { font-size: 13px; font-weight: 600; }
+    .fund-amt.neg { color: var(--red); }
+    .fund-amt.pos { color: var(--blue); }
+    .fund-divider {
+      margin: 8px 0; border: none;
+      border-top: 1px dashed #D6E4F5; height: 1px;
+    }
+    /* ── summary chips ── */
+    .chip-row { display: flex; gap: 10px; margin-top: 18px; }
+    .chip {
+      flex: 1; background: #F0F6FF; border-radius: 12px;
+      padding: 12px 16px; text-align: center;
+    }
+    .chip.red  { background: #FFF1F2; }
+    .chip.green{ background: #F0FDF4; }
+    .chip-lbl  { font-size: 10px; color: var(--muted); font-weight: 600;
+                  letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; }
+    .chip-val  { font-size: 17px; font-weight: 800; color: var(--navy); }
+    .chip.red  .chip-val { color: var(--red); }
+    .chip.green .chip-val { color: var(--green); }
+    /* ── table ── */
+    .mini-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+    .mini-table td { padding: 8px 4px; border-bottom: 1px solid #F0F5FD; }
+    .mini-table tr:last-child td { border-bottom: none; }
+    .mini-table .td-lbl { color: var(--muted); font-size: 12px; }
+    .mini-table .td-val { text-align: right; font-weight: 600; color: var(--navy); }
+    /* ── footer ── */
+    .footer {
+      text-align: center; margin-top: 48px;
+      font-size: 11px; color: #B0BFCC;
+    }
+    /* ── 반응형 ── */
+    @media (max-width: 900px) {
+      .wrap { padding: 20px 20px 40px; }
+      .row { flex-wrap: wrap; }
+      .hd { flex-direction: column; gap: 8px; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── header ── -->
+  <div class="hd">
+    <div>
+      <div class="hd-title">민엽 & 현지 · 자산관리</div>
+      <div class="hd-sub">2027년 결혼·입주를 위한 통합 자금 계획 대시보드</div>
+    </div>
+    <div class="hd-date">
+      기준일 &nbsp;<b>2026. 05. 18</b><br>
+      <span style="font-size:11px">데이터: 자산계획_v3.xlsx</span>
+    </div>
+  </div>
+
+  <!-- ── row 1: 순자산 + 현금 + 투자 + D-Day ── -->
+  <div class="row" style="align-items:stretch;">
+
+    <!-- 순자산 그라디언트 카드 -->
+    <div class="card card-navy" style="flex:1.7; min-width:0;">
+      <div class="lbl">순자산 합계</div>
+      <div class="val" style="font-size:34px;">4억 5,430만</div>
+      <div class="sub">가용자산 &nbsp;3억 2,430만</div>
+      <div class="split">
+        <div class="split-item">
+          <div class="split-lbl">민 엽</div>
+          <div class="split-val">3억 505만</div>
+        </div>
+        <div class="vr"></div>
+        <div class="split-item">
+          <div class="split-lbl">현 지</div>
+          <div class="split-val">1억 4,925만</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 현금·예금 -->
+    <div class="card" style="flex:1; min-width:0;">
+      <div class="lbl">현금 · 예금</div>
+      <div class="val" style="font-size:22px;">2,800만</div>
+      <div class="sub">
+        민엽 651만<br>현지 2,148만
+      </div>
+    </div>
+
+    <!-- 투자자산 -->
+    <div class="card" style="flex:1; min-width:0;">
+      <div class="lbl">투자 자산</div>
+      <div class="val" style="font-size:22px;">4억 230만</div>
+      <div class="sub">
+        민엽 2억 7,453만<br>현지 1억 2,776만
+      </div>
+    </div>
+
+    <!-- D-Day 결혼식 -->
+    <div class="card dday" style="flex:.85; min-width:0;">
+      <div class="dday-ev">결혼식</div>
+      <div class="dday-num"><span class="dday-pref">D-</span>409</div>
+      <div class="dday-dt">2027년 7월</div>
+      <div class="prog-bg">
+        <div class="prog-fill" style="width:67%;"></div>
+      </div>
+    </div>
+
+    <!-- D-Day 잔금 -->
+    <div class="card dday" style="flex:.85; min-width:0;">
+      <div class="dday-ev">잔금 · 입주</div>
+      <div class="dday-num"><span class="dday-pref">D-</span>471</div>
+      <div class="dday-dt">2027년 9월</div>
+      <div class="prog-bg">
+        <div class="prog-fill" style="width:64%;"></div>
+      </div>
+    </div>
+
+  </div><!-- /row1 -->
+
+  <!-- ── row 2: 자산 구성 | 2027 자금 계획 ── -->
+  <div class="row" style="align-items:stretch;">
+
+    <!-- 자산 구성 -->
+    <div class="card chart-card" style="flex:1.1; min-width:0;">
+      <div class="sect">자산 구성</div>
+      <div id="donut" style="margin: 0 auto;"></div>
+      <div style="margin-top:20px;">
+        <div class="sect" style="margin-bottom:12px;">민엽 · 현지 비교</div>
+        <div id="bar-compare" style="min-height:180px;"></div>
+      </div>
+    </div>
+
+    <!-- 2027 자금 계획 -->
+    <div class="card chart-card" style="flex:1; min-width:0;">
+      <div class="sect">2027년 자금 계획</div>
+      <div id="fund-chart" style="min-height:320px;"></div>
+      <div class="chip-row">
+        <div class="chip red">
+          <div class="chip-lbl">지출 합계</div>
+          <div class="chip-val">7억 7,600만</div>
+        </div>
+        <div class="chip">
+          <div class="chip-lbl">가용 합계</div>
+          <div class="chip-val" style="color:var(--blue);">9억 8,380만</div>
+        </div>
+        <div class="chip green">
+          <div class="chip-lbl">여유</div>
+          <div class="chip-val">2억 780만</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /row2 -->
+
+  <!-- ── row 3: 월별 저축 추이 ── -->
+  <div class="card chart-card" style="margin-bottom:16px;">
+    <div class="sect">월별 저축 추이 &nbsp;<span style="font-size:12px;font-weight:400;color:var(--muted);">2026.05 → 2027.09</span></div>
+    <div id="monthly-chart" style="min-height:300px;"></div>
+    <!-- 요약 칩 -->
+    <div class="chip-row" style="margin-top:12px;">
+      <div class="chip">
+        <div class="chip-lbl">2027.09까지 예상 저축</div>
+        <div class="chip-val" style="color:var(--blue);">6,950만</div>
+      </div>
+      <div class="chip">
+        <div class="chip-lbl">남은 기간</div>
+        <div class="chip-val">15개월</div>
+      </div>
+      <div class="chip">
+        <div class="chip-lbl">이미 납부 계약금</div>
+        <div class="chip-val">1억 3,000만</div>
+      </div>
+      <div class="chip">
+        <div class="chip-lbl">어머니 차용금 (부채)</div>
+        <div class="chip-val" style="color:var(--red);">△1억 600만</div>
+      </div>
+    </div>
+  </div><!-- /row3 -->
+
+  <!-- ── footer ── -->
+  <div class="footer">
+    민엽 &amp; 현지 자산관리 &nbsp;·&nbsp; 2026. 05. 18 기준
+    &nbsp;·&nbsp; 데이터: 자산계획_v3.xlsx
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+/* ── 공통 팔레트 ── */
+const NAVY   = "#1F3864";
+const BLUE   = "#2E75B6";
+const BLUE2  = "#5BA3D9";
+const LBLUE  = "#BDD7EE";
+const RED    = "#EF4444";
+const GREEN  = "#10B981";
+const MUTED  = "#6B7A8D";
+const FONT   = "Pretendard, -apple-system, sans-serif";
+const baseOpts = {
+  chart:  { fontFamily: FONT, toolbar: { show: false }, animations: { speed: 600 } },
+  tooltip:{ style: { fontFamily: FONT, fontSize: "12px" } },
+  legend: { fontFamily: FONT, fontSize: "12px" },
+  dataLabels: { style: { fontFamily: FONT } },
+};
+
+/* ══════════════════════════════════════════
+   1. 자산 구성 도넛
+══════════════════════════════════════════ */
+new ApexCharts(document.getElementById("donut"), {
+  ...baseOpts,
+  chart: { ...baseOpts.chart, type: "donut", height: 280 },
+  series: [28002476, 402304156, 130000000],
+  labels: ["현금·예금", "투자자산", "계약금"],
+  colors: [LBLUE, BLUE, NAVY],
+  plotOptions: {
+    pie: {
+      donut: {
+        size: "68%",
+        labels: {
+          show: true,
+          name:  { fontFamily: FONT, fontSize: "13px", color: NAVY },
+          value: { fontFamily: FONT, fontSize: "18px", fontWeight: 800, color: NAVY,
+                    formatter: v => numFmt(v) },
+          total: {
+            show: true, label: "총 자산", fontFamily: FONT, fontSize: "12px", color: MUTED,
+            formatter: w => numFmt(w.globals.seriesTotals.reduce((a,b)=>a+b,0)),
+          },
+        },
+      },
+    },
+  },
+  dataLabels: { enabled: false },
+  legend: { ...baseOpts.legend, position: "bottom", markers: { radius: 4 } },
+  tooltip: { ...baseOpts.tooltip, y: { formatter: v => numFmt(v) + "원" } },
+}).render();
+
+/* ══════════════════════════════════════════
+   2. 민엽/현지 비교 bar
+══════════════════════════════════════════ */
+new ApexCharts(document.getElementById("bar-compare"), {
+  ...baseOpts,
+  chart:  { ...baseOpts.chart, type: "bar", height: 190, stacked: false },
+  series: [
+    { name: "민엽", data: [6513400, 274538299, 130000000, -106000000] },
+    { name: "현지", data: [21489076, 127765857, 0, 0] },
+  ],
+  xaxis:  { categories: ["현금·예금", "투자자산", "계약금", "부채"], labels: { style: { fontFamily: FONT, fontSize: "11px" } } },
+  yaxis:  { labels: { formatter: v => numFmt(v), style: { fontFamily: FONT, fontSize: "10px" } } },
+  colors: [NAVY, BLUE2],
+  plotOptions: { bar: { borderRadius: 4, columnWidth: "60%", borderRadiusApplication: "end" } },
+  dataLabels: { enabled: false },
+  grid: { borderColor: "#F0F5FD", xaxis: { lines: { show: false } } },
+  legend: { ...baseOpts.legend, position: "top", horizontalAlign: "right" },
+  tooltip: { ...baseOpts.tooltip, y: { formatter: v => numFmt(v) + "원" } },
+}).render();
+
+/* ══════════════════════════════════════════
+   3. 자금 계획 가로 bar
+══════════════════════════════════════════ */
+const fundLabels = ["잔금 자기자금", "취득세·부대비용", "세입자 보증금 반환", "인테리어·가전", "결혼식·신혼여행", "어머니 차용금", "현재 가용자산", "2027.09 저축 예상", "대출 예정", "예상 축의금"];
+const fundValues = [220000000, 50000000, 300000000, 50000000, 50000000, 106000000, 324306632, 69500000, 560000000, 30000000];
+const fundColors = ["#EF4444", "#EF4444", "#EF4444", "#EF4444", "#EF4444", "#EF4444", "#2E75B6", "#2E75B6", "#2E75B6", "#2E75B6"];
+const fundOpacity= [0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85];
+
+new ApexCharts(document.getElementById("fund-chart"), {
+  ...baseOpts,
+  chart:  { ...baseOpts.chart, type: "bar", height: 340 },
+  series: [{ name: "금액", data: fundValues }],
+  xaxis: {
+    categories: fundLabels,
+    labels: { show: false },
+  },
+  yaxis: {
+    labels: {
+      style: { fontFamily: FONT, fontSize: "11.5px", colors: Array(fundLabels.length).fill(MUTED) },
+      maxWidth: 160,
+    },
+  },
+  plotOptions: {
+    bar: {
+      horizontal: true, borderRadius: 5,
+      borderRadiusApplication: "end",
+      dataLabels: { position: "top" },
+    },
+  },
+  fill: { colors: fundColors, opacity: fundOpacity },
+  dataLabels: {
+    enabled: true, offsetX: 6,
+    style: { fontFamily: FONT, fontSize: "11px", colors: [NAVY], fontWeight: 600 },
+    formatter: v => numFmt(v),
+  },
+  grid: { borderColor: "#F0F5FD", yaxis: { lines: { show: false } } },
+  legend: { show: false },
+  tooltip: { ...baseOpts.tooltip, y: { formatter: v => numFmt(v) + "원" } },
+}).render();
+
+/* ══════════════════════════════════════════
+   4. 월별 저축 추이
+══════════════════════════════════════════ */
+new ApexCharts(document.getElementById("monthly-chart"), {
+  ...baseOpts,
+  chart: { ...baseOpts.chart, type: "line", height: 310,
+           zoom: { enabled: false }, toolbar: { show: false } },
+  series: [
+    { name: "합계 수입", type: "column", data: [9500000, 9500000, 9500000, 11500000, 9500000, 9500000, 9500000, 9500000, 19500000, 9500000, 9500000, 9500000, 9500000, 9500000, 9500000, 0, 0] },
+    { name: "합계 지출", type: "column", data: [4500000, 4500000, 4000000, 6000000, 6000000, 6000000, 6000000, 6000000, 6000000, 6000000, 6000000, 6000000, 6000000, 6000000, 6000000, 0, 0] },
+    { name: "월 저축액", type: "line",   data: [5000000, 5000000, 5500000, 5500000, 3500000, 3500000, 3500000, 3500000, 13500000, 3500000, 3500000, 3500000, 3500000, 3500000, 3500000, 0, 0] },
+    { name: "누계 저축", type: "line",   data: [5000000, 10000000, 15500000, 21000000, 24500000, 28000000, 31500000, 35000000, 48500000, 52000000, 55500000, 59000000, 62500000, 66000000, 69500000, 69500000, 69500000], yAxisIndex: 1 },
+  ],
+  xaxis: {
+    categories: ["26.05", "26.06", "26.07", "26.08", "26.09", "26.10", "26.11", "26.12", "27.01", "27.02", "27.03", "27.04", "27.05", "27.06", "27.07", "27.08", "27.09"],
+    tickAmount: 8,
+    labels: { style: { fontFamily: FONT, fontSize: "10px", colors: MUTED } },
+  },
+  yaxis: [
+    { seriesName: "합계 수입",
+       labels: { formatter: v => numFmt(v), style: { fontFamily: FONT, fontSize: "10px", colors: [MUTED] } } },
+    { seriesName: "누계 저축", opposite: true,
+       labels: { formatter: v => numFmt(v), style: { fontFamily: FONT, fontSize: "10px", colors: [BLUE] } } },
+  ],
+  colors: [LBLUE, "#FECACA", NAVY, BLUE],
+  fill: {
+    opacity: [0.7, 0.7, 1, 0.08],
+    type: ["solid","solid","solid","gradient"],
+    gradient: { shade:"light", type:"vertical", shadeIntensity:.3,
+                  gradientToColors:[BLUE], opacityFrom:.12, opacityTo:.01 },
+  },
+  stroke: {
+    width: [0, 0, 2.5, 2.5],
+    curve: ["smooth","smooth","smooth","smooth"],
+    dashArray: [0, 0, 0, 5],
+  },
+  markers: {
+    size: [0, 0, 4, 0],
+    colors: [NAVY],
+    strokeColors: "#fff",
+    strokeWidth: 2,
+  },
+  plotOptions: { bar: { columnWidth: "55%", borderRadius: 3, borderRadiusApplication: "end" } },
+  dataLabels: { enabled: false },
+  legend: { ...baseOpts.legend, position: "top", horizontalAlign: "left",
+             markers: { radius: 4 }, offsetY: -4 },
+  grid: { borderColor: "#F0F5FD", xaxis: { lines: { show: false } } },
+  tooltip: { ...baseOpts.tooltip, shared: true, intersect: false,
+              y: { formatter: v => v != null ? numFmt(v)+"원" : "-" } },
+}).render();
+
+/* ══════════════════════════════════════════
+   numFmt helper
+══════════════════════════════════════════ */
+function numFmt(n) {
+  if (n == null) return "-";
+  const abs = Math.abs(n);
+  if (abs >= 1e8) {
+    const eok = Math.floor(abs / 1e8);
+    const man = Math.floor((abs % 1e8) / 1e4);
+    return man > 0 ? `${eok}억 ${man.toLocaleString()}만` : `${eok}억`;
+  } else if (abs >= 1e4) {
+    return `${Math.floor(abs / 1e4).toLocaleString()}만`;
+  }
+  return abs.toLocaleString();
+}
+</script>
+
+</body>
+</html>
