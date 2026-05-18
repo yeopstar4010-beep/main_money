@@ -324,9 +324,19 @@ def build_html(d):
     .chip.red   .chip-val {{ color:var(--red); }}
     .chip.green .chip-val {{ color:var(--green); }}
     /* legend dots for fund chart */
-    .fund-legend {{ display:flex; gap:16px; margin-bottom:10px; flex-wrap:wrap; }}
+    .fund-legend {{ display:flex; gap:16px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }}
     .fl-item {{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted); }}
     .fl-dot {{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }}
+    /* 부모님 지원 토글 버튼 */
+    .toggle-btn {{
+      display:inline-flex; align-items:center; gap:6px; margin-left:auto;
+      padding:5px 12px; border-radius:99px; border:1px solid var(--border);
+      background:#F8FAFD; font-size:11px; font-weight:600; color:var(--muted);
+      cursor:pointer; transition:all .2s; user-select:none;
+    }}
+    .toggle-btn.active-toggle {{ background:#EEF2FF; border-color:#6366F1; color:#6366F1; }}
+    .toggle-btn .tb-dot {{ width:8px; height:8px; border-radius:50%; background:var(--border); transition:background .2s; }}
+    .toggle-btn.active-toggle .tb-dot {{ background:#6366F1; }}
     /* table */
     .mini-table {{ width:100%; font-size:13px; border-collapse:collapse; }}
     .mini-table td {{ padding:8px 6px; border-bottom:1px solid #F0F5FD; }}
@@ -458,6 +468,9 @@ def build_html(d):
         <div class="fl-item"><div class="fl-dot" style="background:#2E75B6;"></div>현재 가용 · 저축</div>
         <div class="fl-item"><div class="fl-dot" style="background:#0D9488;"></div>대출 (주담대+보증금)</div>
         <div class="fl-item"><div class="fl-dot" style="background:#10B981;"></div>예상 축의금</div>
+        <button class="toggle-btn" id="toggle-parents" onclick="toggleParents()">
+          <div class="tb-dot"></div>부모님 지원 포함
+        </button>
       </div>
       <div id="fund-chart" style="min-height:340px;"></div>
       <div class="chip-row">
@@ -465,13 +478,13 @@ def build_html(d):
           <div class="chip-lbl">지출 합계</div>
           <div class="chip-val">{fmt(총지출)}</div>
         </div>
-        <div class="chip">
+        <div class="chip" id="chip-가용">
           <div class="chip-lbl">가용 합계</div>
-          <div class="chip-val" style="color:var(--blue);">{fmt(총가용)}</div>
+          <div class="chip-val" id="chip-가용-val" style="color:var(--blue);">{fmt(총가용)}</div>
         </div>
-        <div class="chip {'green' if 여유 >= 0 else 'red'}">
-          <div class="chip-lbl">{'여유' if 여유 >= 0 else '부족'}</div>
-          <div class="chip-val">{fmt(abs(여유))}</div>
+        <div class="chip {'green' if 여유 >= 0 else 'red'}" id="chip-여유">
+          <div class="chip-lbl" id="chip-여유-lbl">{'여유' if 여유 >= 0 else '부족'}</div>
+          <div class="chip-val" id="chip-여유-val">{fmt(abs(여유))}</div>
         </div>
       </div>
 
@@ -603,12 +616,20 @@ new ApexCharts(document.getElementById("bar-compare"), {{
 }}).render();
 
 /* ── 3. 자금 계획 가로 bar (#3: distributed 색상) ── */
-new ApexCharts(document.getElementById("fund-chart"), {{
+const BASE_LABELS = {fund_labels};
+const BASE_VALUES = {fund_values};
+const BASE_COLORS = {fund_colors};
+const 부모님지원액 = 106000000;
+const 총가용Base   = {총가용};
+const 총지출Const  = {총지출};
+let parentsOn = false;
+
+const fundChart = new ApexCharts(document.getElementById("fund-chart"), {{
   ...baseOpts,
   chart: {{ ...baseOpts.chart, type: "bar", height: 370 }},
-  series: [{{ name: "금액", data: {fund_values} }}],
+  series: [{{ name: "금액", data: BASE_VALUES }}],
   xaxis: {{
-    categories: {fund_labels},
+    categories: BASE_LABELS,
     labels: {{ show: false }},
   }},
   yaxis: {{
@@ -626,7 +647,7 @@ new ApexCharts(document.getElementById("fund-chart"), {{
       dataLabels: {{ position: "top" }},
     }},
   }},
-  colors: {fund_colors},
+  colors: BASE_COLORS,
   fill: {{ opacity: 0.88 }},
   dataLabels: {{
     enabled: true, offsetX: 6,
@@ -636,7 +657,37 @@ new ApexCharts(document.getElementById("fund-chart"), {{
   grid: {{ borderColor: "#F0F5FD", yaxis: {{ lines: {{ show: false }} }} }},
   legend: {{ show: false }},
   tooltip: {{ ...baseOpts.tooltip, y: {{ formatter: v => numFmt(v) + "원" }} }},
-}}).render();
+}});
+fundChart.render();
+
+function toggleParents() {{
+  parentsOn = !parentsOn;
+  const btn = document.getElementById("toggle-parents");
+  btn.classList.toggle("active-toggle", parentsOn);
+
+  const labels = parentsOn ? [...BASE_LABELS, "부모님 지원"] : BASE_LABELS;
+  const values = parentsOn ? [...BASE_VALUES, 부모님지원액]  : BASE_VALUES;
+  const colors = parentsOn ? [...BASE_COLORS, "#6366F1"]    : BASE_COLORS;
+
+  fundChart.updateOptions({{
+    chart:  {{ height: parentsOn ? 400 : 370 }},
+    series: [{{ name: "금액", data: values }}],
+    xaxis:  {{ categories: labels }},
+    yaxis:  {{ labels: {{
+      style: {{ fontFamily: FONT, fontSize: "11.5px", colors: Array(labels.length).fill(MUTED) }},
+      maxWidth: 170,
+    }} }},
+    colors: colors,
+  }});
+
+  const 총가용Cur = parentsOn ? 총가용Base + 부모님지원액 : 총가용Base;
+  const 여유Cur   = 총가용Cur - 총지출Const;
+
+  document.getElementById("chip-가용-val").textContent = numFmt(총가용Cur);
+  document.getElementById("chip-여유").className = "chip " + (여유Cur >= 0 ? "green" : "red");
+  document.getElementById("chip-여유-lbl").textContent = 여유Cur >= 0 ? "여유" : "부족";
+  document.getElementById("chip-여유-val").textContent = numFmt(Math.abs(여유Cur));
+}}
 
 /* ── 4. 월별 저축 추이 ── */
 new ApexCharts(document.getElementById("monthly-chart"), {{
