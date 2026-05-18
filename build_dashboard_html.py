@@ -133,11 +133,12 @@ def build_html(d):
     total_b    = (balance_day - date(2024, 1, 1)).days
     prog_bal   = min(100, int(elapsed / total_b * 100))
 
-    # 자금 계획 수치 (#1: 계약금 납부도 지출에 포함)
+    # 자금 계획 수치
+    # 가용자산은 계약금을 제외한 금액 → 지출에도 계약금 미포함(이미 반영됨)
+    보증금반환대출 = 100_000_000  # 별도 대출
     총지출 = (abs(d["잔금_자"]) + abs(d["취득세"]) + abs(d["보증금"])
-             + abs(d["인테리어"]) + abs(d["결혼총"]) + 106_000_000
-             + abs(d["계약금_m"]))
-    총가용 = d["가용_t"] + d["누계저축"] + d["대출"] + d["축의금"]
+             + abs(d["인테리어"]) + abs(d["결혼총"]) + 106_000_000)
+    총가용 = d["가용_t"] + d["누계저축"] + d["대출"] + 보증금반환대출 + d["축의금"]
     여유   = 총가용 - 총지출
 
     # 차트용 JSON 헬퍼
@@ -152,21 +153,21 @@ def build_html(d):
     bar_minyeob = [d["현금_m"], d["투자_m"], d["계약금_m"], d["부채_m"]]
     bar_hyeonji = [d["현금_h"], d["투자_h"], 0,            d["부채_h"]]
 
-    # 3) 자금계획 가로 bar — #3: 색상 구분
-    # 지출(빨강), 대출예정(청록), 예상축의금(초록), 현재가용+저축(파랑)
+    # 3) 자금계획 가로 bar — 색상 구분
+    # 가용자산에 계약금 미포함 → 지출에도 계약금 미포함 (이미 가용자산에 반영됨)
     fund_items = [
-        # (label, value, color, type_label)
-        ("계약금 납부 (기완료)",  abs(d["계약금_m"]),  "#EF4444", "out"),
-        ("잔금 자기자금",          abs(d["잔금_자"]),   "#EF4444", "out"),
-        ("취득세·부대비용",        abs(d["취득세"]),    "#EF4444", "out"),
-        ("세입자 보증금 반환",     abs(d["보증금"]),    "#EF4444", "out"),
-        ("인테리어·가전",          abs(d["인테리어"]),  "#EF4444", "out"),
-        ("결혼식·신혼여행",        abs(d["결혼총"]),    "#EF4444", "out"),
-        ("어머니 차용금",          106_000_000,         "#EF4444", "out"),
-        ("현재 가용자산",          d["가용_t"],         "#2E75B6", "in"),
-        ("2027.09 저축 예상",      d["누계저축"],       "#2E75B6", "in"),
-        ("대출 예정",              d["대출"],           "#0D9488", "loan"),
-        ("예상 축의금",            d["축의금"],         "#10B981", "gift"),
+        # (label, value, color)
+        ("잔금 자기자금",          abs(d["잔금_자"]),   "#EF4444"),
+        ("취득세·부대비용",        abs(d["취득세"]),    "#EF4444"),
+        ("세입자 보증금 반환",     abs(d["보증금"]),    "#EF4444"),
+        ("인테리어·가전",          abs(d["인테리어"]),  "#EF4444"),
+        ("결혼식·신혼여행",        abs(d["결혼총"]),    "#EF4444"),
+        ("어머니 차용금",          106_000_000,         "#EF4444"),
+        ("현재 가용자산",          d["가용_t"],         "#2E75B6"),
+        ("2027.09 저축 예상",      d["누계저축"],       "#2E75B6"),
+        ("주담대 대출",            d["대출"],           "#0D9488"),
+        ("보증금 반환 대출",       보증금반환대출,       "#0D9488"),
+        ("예상 축의금",            d["축의금"],         "#10B981"),
     ]
     fund_labels  = j([x[0] for x in fund_items])
     fund_values  = j([x[1] for x in fund_items])
@@ -186,13 +187,15 @@ def build_html(d):
 
     # 부동산 세부 accordion HTML
     re_detail_rows = [
-        ("아파트 매매가",      fmt(d["매매가"]),   ""),
-        ("계약금 납부",        fmt(d["계약금_m"]), "2025.04 완료"),
-        ("잔금 자기자금",      fmt(d["잔금_자"]),  "2027.09"),
-        ("대출 예정",          fmt(d["대출"]),     "주담대 예정"),
-        ("취득세·부대비용",    fmt(d["취득세"]),   "예상치"),
-        ("세입자 보증금 반환", fmt(d["보증금"]),   "입주 시"),
-        ("인테리어·가전",      fmt(d["인테리어"]), "예상치"),
+        ("아파트 매매가",        fmt(d["매매가"]),        ""),
+        ("계약금 납부",          fmt(d["계약금_m"]),      "2025.04 완료"),
+        ("잔금 자기자금",        fmt(d["잔금_자"]),       "2027.09"),
+        ("주담대 대출",          fmt(d["대출"]),          "예정"),
+        ("보증금 반환 대출",     fmt(보증금반환대출),      "예정"),
+        ("대출 합계",            fmt(d["대출"]+보증금반환대출), ""),
+        ("취득세·부대비용",      fmt(d["취득세"]),        "예상치"),
+        ("세입자 보증금 반환",   fmt(d["보증금"]),        "입주 시"),
+        ("인테리어·가전",        fmt(d["인테리어"]),      "예상치"),
     ]
     re_rows_html = "\n".join(
         f'<tr><td class="td-lbl">{name}</td><td class="td-val">{val}</td>'
@@ -430,7 +433,7 @@ def build_html(d):
       <div class="fund-legend">
         <div class="fl-item"><div class="fl-dot" style="background:#EF4444;"></div>지출 항목</div>
         <div class="fl-item"><div class="fl-dot" style="background:#2E75B6;"></div>현재 가용 · 저축</div>
-        <div class="fl-item"><div class="fl-dot" style="background:#0D9488;"></div>대출 예정</div>
+        <div class="fl-item"><div class="fl-dot" style="background:#0D9488;"></div>대출 (주담대+보증금)</div>
         <div class="fl-item"><div class="fl-dot" style="background:#10B981;"></div>예상 축의금</div>
       </div>
       <div id="fund-chart" style="min-height:340px;"></div>
@@ -612,16 +615,16 @@ new ApexCharts(document.getElementById("fund-chart"), {{
   tooltip: {{ ...baseOpts.tooltip, y: {{ formatter: v => numFmt(v) + "원" }} }},
 }}).render();
 
-/* ── 4. 월별 저축 추이 (#5: type:"bar" 수정) ── */
+/* ── 4. 월별 저축 추이 ── */
 new ApexCharts(document.getElementById("monthly-chart"), {{
   ...baseOpts,
-  chart: {{ ...baseOpts.chart, type: "line", height: 310,
+  chart: {{ ...baseOpts.chart, type: "bar", height: 310,
            zoom: {{ enabled: false }} }},
   series: [
-    {{ name: "합계 수입", type: "bar",  yAxisIndex: 0, data: {j(수입_arr)} }},
-    {{ name: "합계 지출", type: "bar",  yAxisIndex: 0, data: {j(지출_arr)} }},
-    {{ name: "월 저축액", type: "line", yAxisIndex: 0, data: {j(저축_arr)} }},
-    {{ name: "누계 저축", type: "line", yAxisIndex: 1, data: {j(누계_arr)} }},
+    {{ name: "합계 수입", type: "bar",  data: {j(수입_arr)} }},
+    {{ name: "합계 지출", type: "bar",  data: {j(지출_arr)} }},
+    {{ name: "월 저축액", type: "line", data: {j(저축_arr)} }},
+    {{ name: "누계 저축", type: "line", data: {j(누계_arr)}, yAxisIndex: 1 }},
   ],
   xaxis: {{
     categories: {j(months_ym)},
@@ -629,29 +632,20 @@ new ApexCharts(document.getElementById("monthly-chart"), {{
     labels: {{ style: {{ fontFamily: FONT, fontSize: "10px", colors: MUTED }} }},
   }},
   yaxis: [
-    {{ seriesName: "합계 수입",
-       labels: {{ formatter: v => numFmt(v),
+    {{ labels: {{ formatter: v => numFmt(v),
                   style: {{ fontFamily: FONT, fontSize: "10px", colors: [MUTED] }} }} }},
-    {{ seriesName: "누계 저축", opposite: true,
+    {{ opposite: true,
        labels: {{ formatter: v => numFmt(v),
                   style: {{ fontFamily: FONT, fontSize: "10px", colors: [BLUE] }} }} }},
   ],
   colors: [LBLUE, "#FECACA", NAVY, BLUE],
-  fill: {{
-    opacity: [0.7, 0.7, 1, 1],
-    type: ["solid", "solid", "solid", "solid"],
-  }},
+  fill: {{ opacity: [0.75, 0.75, 1, 1] }},
   stroke: {{
     width: [0, 0, 2.5, 2.5],
-    curve: "smooth",
     dashArray: [0, 0, 0, 5],
+    curve: ["smooth", "smooth", "smooth", "smooth"],
   }},
-  markers: {{
-    size: [0, 0, 4, 0],
-    colors: [NAVY],
-    strokeColors: "#fff",
-    strokeWidth: 2,
-  }},
+  markers: {{ size: [0, 0, 4, 0], hover: {{ sizeOffset: 3 }} }},
   plotOptions: {{ bar: {{ columnWidth: "55%", borderRadius: 3, borderRadiusApplication: "end" }} }},
   dataLabels: {{ enabled: false }},
   legend: {{ ...baseOpts.legend, position: "top", horizontalAlign: "left",
