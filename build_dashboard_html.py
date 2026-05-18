@@ -36,10 +36,21 @@ def load():
     d["투자_m"]   = sum(g(ws, r, 3) for r in range(19, 25))
     d["투자_h"]   = sum(g(ws, r, 5) for r in range(19, 25))
     d["투자_t"]   = d["투자_m"] + d["투자_h"]
-    d["계약금_m"] = g(ws, 28, 3)
-    d["계약금_t"] = d["계약금_m"]
-    d["부채_m"]   = sum(g(ws, r, 3) for r in range(32, 36))
-    d["부채_h"]   = sum(g(ws, r, 5) for r in range(32, 36))
+    # 계약금/납부완료 섹션: R28-31 (아파트+예식장+취득세+기타)
+    d["계약금_m"] = sum(g(ws, r, 3) for r in range(28, 32))
+    d["계약금_h"] = sum(g(ws, r, 5) for r in range(28, 32))
+    d["계약금_t"] = d["계약금_m"] + d["계약금_h"]
+    # 납부완료 개별 항목 (카드용)
+    paid_items = []
+    for r in range(28, 32):
+        name = gs(ws, r, 2)
+        val  = g(ws, r, 3) + g(ws, r, 5)  # 민엽+현지 합계
+        if name and "소" not in name:
+            paid_items.append((name, val))
+    d["납부완료_items"] = paid_items
+    # 부채: R35-38 (insert_rows(29,3) 후 이동)
+    d["부채_m"]   = sum(g(ws, r, 3) for r in range(35, 39))
+    d["부채_h"]   = sum(g(ws, r, 5) for r in range(35, 39))
     d["부채_t"]   = d["부채_m"] + d["부채_h"]
     d["순자산_m"] = d["현금_m"] + d["투자_m"] + d["계약금_m"] + d["부채_m"]
     d["순자산_h"] = d["현금_h"] + d["투자_h"] + d["부채_h"]
@@ -55,6 +66,7 @@ def load():
     d["매매가"]   = g(ws, 5, 4, 1_210_000_000)
     d["잔금_자"]  = g(ws, 7, 4, 220_000_000)
     d["대출"]     = g(ws, 8, 4, 560_000_000)
+    d["잔금_t"]   = d["잔금_자"] + d["대출"]   # 잔금 총액 = 자기자금 + 주담대
     d["취득세"]   = g(ws, 9, 4, 50_000_000)
     d["보증금"]   = g(ws, 10, 4, 300_000_000)
     d["인테리어"] = g(ws, 11, 4, 40_000_000)
@@ -134,10 +146,11 @@ def build_html(d):
     prog_bal   = min(100, int(elapsed / total_b * 100))
 
     # 자금 계획 수치
-    # 가용자산은 계약금을 제외한 금액 → 지출에도 계약금 미포함(이미 반영됨)
-    보증금반환대출 = 100_000_000  # 별도 대출
-    총지출 = (abs(d["잔금_자"]) + abs(d["취득세"]) + abs(d["보증금"])
-             + abs(d["인테리어"]) + abs(d["결혼총"]) + 106_000_000)
+    보증금반환대출 = 100_000_000  # 보증금 반환 전용 대출 (별도)
+    # 잔금 총액 = 자기자금 + 주담대 (보증금과 동일한 방식으로 총액 표시)
+    # 어머니 차용금: 당장 상환 계획 없어 2027 자금계획에서 제외
+    총지출 = (abs(d["잔금_t"]) + abs(d["취득세"]) + abs(d["보증금"])
+             + abs(d["인테리어"]) + abs(d["결혼총"]))
     총가용 = d["가용_t"] + d["누계저축"] + d["대출"] + 보증금반환대출 + d["축의금"]
     여유   = 총가용 - 총지출
 
@@ -153,21 +166,20 @@ def build_html(d):
     bar_minyeob = [d["현금_m"], d["투자_m"], d["계약금_m"], d["부채_m"]]
     bar_hyeonji = [d["현금_h"], d["투자_h"], 0,            d["부채_h"]]
 
-    # 3) 자금계획 가로 bar — 색상 구분
-    # 가용자산에 계약금 미포함 → 지출에도 계약금 미포함 (이미 가용자산에 반영됨)
+    # 3) 자금계획 가로 bar
+    # 잔금 = 총액(7.8억) 표시, 보증금과 동일 방식. 어머니차용금은 당장 상환 계획 없어 제외
     fund_items = [
         # (label, value, color)
-        ("잔금 자기자금",          abs(d["잔금_자"]),   "#EF4444"),
-        ("취득세·부대비용",        abs(d["취득세"]),    "#EF4444"),
-        ("세입자 보증금 반환",     abs(d["보증금"]),    "#EF4444"),
-        ("인테리어·가전",          abs(d["인테리어"]),  "#EF4444"),
-        ("결혼식·신혼여행",        abs(d["결혼총"]),    "#EF4444"),
-        ("어머니 차용금",          106_000_000,         "#EF4444"),
-        ("현재 가용자산",          d["가용_t"],         "#2E75B6"),
-        ("2027.09 저축 예상",      d["누계저축"],       "#2E75B6"),
-        ("주담대 대출",            d["대출"],           "#0D9488"),
-        ("보증금 반환 대출",       보증금반환대출,       "#0D9488"),
-        ("예상 축의금",            d["축의금"],         "#10B981"),
+        ("잔금 (자기자금+주담대)",   abs(d["잔금_t"]),    "#EF4444"),
+        ("취득세·부대비용",          abs(d["취득세"]),    "#EF4444"),
+        ("세입자 보증금 반환",       abs(d["보증금"]),    "#EF4444"),
+        ("인테리어·가전",            abs(d["인테리어"]),  "#EF4444"),
+        ("결혼식·신혼여행",          abs(d["결혼총"]),    "#EF4444"),
+        ("현재 가용자산",            d["가용_t"],         "#2E75B6"),
+        ("2027.09 저축 예상",        d["누계저축"],       "#2E75B6"),
+        ("주담대 대출",              d["대출"],           "#0D9488"),
+        ("보증금 반환 대출",         보증금반환대출,       "#0D9488"),
+        ("예상 축의금",              d["축의금"],         "#10B981"),
     ]
     fund_labels  = j([x[0] for x in fund_items])
     fund_values  = j([x[1] for x in fund_items])
@@ -187,15 +199,16 @@ def build_html(d):
 
     # 부동산 세부 accordion HTML
     re_detail_rows = [
-        ("아파트 매매가",        fmt(d["매매가"]),        ""),
-        ("계약금 납부",          fmt(d["계약금_m"]),      "2025.04 완료"),
-        ("잔금 자기자금",        fmt(d["잔금_자"]),       "2027.09"),
-        ("주담대 대출",          fmt(d["대출"]),          "예정"),
-        ("보증금 반환 대출",     fmt(보증금반환대출),      "예정"),
-        ("대출 합계",            fmt(d["대출"]+보증금반환대출), ""),
-        ("취득세·부대비용",      fmt(d["취득세"]),        "예상치"),
-        ("세입자 보증금 반환",   fmt(d["보증금"]),        "입주 시"),
-        ("인테리어·가전",        fmt(d["인테리어"]),      "예상치"),
+        ("아파트 매매가",        fmt(d["매매가"]),                        ""),
+        ("계약금 납부",          fmt(d["계약금_m"]),                      "2025.04 완료"),
+        ("잔금 총액",            fmt(d["잔금_t"]),                        "2027.09"),
+        ("  └ 자기자금",         fmt(d["잔금_자"]),                       ""),
+        ("  └ 주담대 대출",      fmt(d["대출"]),                          "예정"),
+        ("취득세·부대비용",      fmt(d["취득세"]),                        "예상치"),
+        ("세입자 보증금 반환",   fmt(d["보증금"]),                        "입주 시"),
+        ("  └ 보증금 반환 대출", fmt(보증금반환대출),                      "예정"),
+        ("인테리어·가전",        fmt(d["인테리어"]),                      "예상치"),
+        ("대출 합계",            fmt(d["대출"] + 보증금반환대출),          "주담대+보증금"),
     ]
     re_rows_html = "\n".join(
         f'<tr><td class="td-lbl">{name}</td><td class="td-val">{val}</td>'
@@ -391,21 +404,31 @@ def build_html(d):
       <div class="sub">민엽 {fmt(d["투자_m"])}<br>현지 {fmt(d["투자_h"])}</div>
     </div>
 
-    <!-- #2: 부채 합계 카드 추가 -->
+    <!-- 납부 완료 카드 -->
+    <div class="card" style="flex:.9; min-width:0;">
+      <div class="lbl">납부 완료</div>
+      <div class="val" style="font-size:20px; color:var(--teal);">{fmt(d["계약금_t"])}</div>
+      <div class="sub">{"<br>".join(
+        f'{name}: {fmt(val)}' if val else f'<span style="color:#C0CAD8">{name}: -</span>'
+        for name, val in d["납부완료_items"]
+      )}</div>
+    </div>
+
+    <!-- 부채 합계 카드 -->
     <div class="card" style="flex:.9; min-width:0;">
       <div class="lbl">부 채</div>
       <div class="val val-red" style="font-size:20px;">{fmt(d["부채_t"])}</div>
       <div class="sub">민엽 {fmt(d["부채_m"])}<br>현지 {fmt(d["부채_h"])}</div>
     </div>
 
-    <div class="card dday" style="flex:.75; min-width:0;">
+    <div class="card dday" style="flex:.7; min-width:0;">
       <div class="dday-ev">결혼식</div>
       <div class="dday-num"><span class="dday-pref">D-</span>{d_wed:,}</div>
       <div class="dday-dt">2027년 7월</div>
       <div class="prog-bg"><div class="prog-fill" style="width:{prog_wed}%;"></div></div>
     </div>
 
-    <div class="card dday" style="flex:.75; min-width:0;">
+    <div class="card dday" style="flex:.7; min-width:0;">
       <div class="dday-ev">잔금 · 입주</div>
       <div class="dday-num"><span class="dday-pref">D-</span>{d_bal:,}</div>
       <div class="dday-dt">2027년 9월</div>
